@@ -879,7 +879,7 @@ export function GeneralSettingsPanel() {
           title="Worktree location"
           description="Choose where automatically created worktrees are placed."
           status={
-            worktreeLocationPreview.preview ? (
+            worktreeLocation.mode !== "custom" && worktreeLocationPreview.preview ? (
               <span>
                 Preview:{" "}
                 <code className="text-[11px] text-foreground/80">
@@ -975,16 +975,15 @@ export function GeneralSettingsPanel() {
                   </button>
                 ))}
               </div>
-              <p
-                className={
-                  worktreeLocationPreview.error
-                    ? "text-xs text-destructive"
-                    : "text-xs text-muted-foreground"
-                }
-              >
-                {worktreeLocationPreview.error ??
-                  "Literal substitution only. Include $WORKTREE_NAME in the final path template."}
-              </p>
+              {worktreeLocation.mode === "custom" && worktreeLocationPreview.preview ? (
+                <p className="text-xs text-muted-foreground">
+                  Preview:{" "}
+                  <code className="text-foreground/80">{worktreeLocationPreview.preview}</code>
+                </p>
+              ) : null}
+              {worktreeLocationPreview.error ? (
+                <p className="text-xs text-destructive">{worktreeLocationPreview.error}</p>
+              ) : null}
             </div>
           ) : null}
         </SettingsRow>
