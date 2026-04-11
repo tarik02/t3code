@@ -50,6 +50,7 @@ import type { GitManagerServiceError } from "@t3tools/contracts";
 import { GitVcsDriver, type GitStatusDetails } from "../vcs/GitVcsDriver.ts";
 import { SourceControlProviderRegistry } from "../sourceControl/SourceControlProviderRegistry.ts";
 import type { ChangeRequest } from "@t3tools/contracts";
+import { WorktreeLocationResolver } from "../project/Services/WorktreeLocationResolver.ts";
 
 export interface GitActionProgressReporter {
   readonly publish: (event: GitActionProgressEvent) => Effect.Effect<void, never>;
@@ -540,6 +541,7 @@ export const makeGitManager = Effect.fn("makeGitManager")(function* () {
       gitManagerError("randomUUIDv4", "Failed to generate Git operation identifier.", cause),
     ),
   );
+  const worktreeLocationResolver = yield* WorktreeLocationResolver;
 
   const createProgressEmitter = (
     input: { cwd: string; action: GitStackedAction },
@@ -679,6 +681,15 @@ export const makeGitManager = Effect.fn("makeGitManager")(function* () {
         branch: localBranch,
         remoteName,
         remoteBranch: pullRequest.headBranch,
+      });
+    },
+  );
+
+  const resolveCreateWorktreePath = Effect.fn("GitManager.resolveCreateWorktreePath")(
+    function* (input: { projectRoot: string; branch: string; newBranch?: string }) {
+      return yield* worktreeLocationResolver.resolveCreateWorktreePath({
+        projectRoot: input.projectRoot,
+        name: input.newBranch ?? input.branch,
       });
     },
   );
@@ -1543,10 +1554,14 @@ export const makeGitManager = Effect.fn("makeGitManager")(function* () {
         );
       }
 
+      const worktreePath = yield* resolveCreateWorktreePath({
+        projectRoot: input.cwd,
+        branch: localPullRequestBranch,
+      });
       const worktree = yield* gitCore.createWorktree({
         cwd: input.cwd,
         refName: localPullRequestBranch,
-        path: null,
+        path: worktreePath,
       });
       yield* ensureExistingWorktreeUpstream(worktree.worktree.path);
       yield* maybeRunSetupScript(worktree.worktree.path);

@@ -77,6 +77,7 @@ import { VcsStatusBroadcaster } from "./vcs/VcsStatusBroadcaster.ts";
 import { VcsProvisioningService } from "./vcs/VcsProvisioningService.ts";
 import { GitWorkflowService } from "./git/GitWorkflowService.ts";
 import { ReviewService } from "./review/ReviewService.ts";
+import { WorktreeLocationResolver } from "./project/Services/WorktreeLocationResolver.ts";
 import { ProjectSetupScriptRunner } from "./project/Services/ProjectSetupScriptRunner.ts";
 import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentityResolver.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
@@ -237,6 +238,7 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
       const externalLauncher = yield* ExternalLauncher.ExternalLauncher;
       const gitWorkflow = yield* GitWorkflowService;
       const review = yield* ReviewService;
+      const worktreeLocationResolver = yield* WorktreeLocationResolver;
       const vcsProvisioning = yield* VcsProvisioningService;
       const vcsStatusBroadcaster = yield* VcsStatusBroadcaster;
       const terminalManager = yield* TerminalManager;
@@ -245,6 +247,23 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const resolveCreateWorktreePath = Effect.fn("ws.resolveCreateWorktreePath")(
+        function* (input: {
+          cwd: string;
+          refName: string;
+          newRefName?: string | undefined;
+          path: string | null;
+        }) {
+          if (input.path !== null) {
+            return input.path;
+          }
+
+          return yield* worktreeLocationResolver.resolveCreateWorktreePath({
+            projectRoot: input.cwd,
+            name: input.newRefName ?? input.refName,
+          });
+        },
+      );
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -668,11 +687,19 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
             }
 
             if (bootstrap?.prepareWorktree) {
+              const worktreePath = yield* resolveCreateWorktreePath({
+                cwd: bootstrap.prepareWorktree.projectCwd,
+                refName: bootstrap.prepareWorktree.baseBranch,
+                path: null,
+                ...(bootstrap.prepareWorktree.branch
+                  ? { newRefName: bootstrap.prepareWorktree.branch }
+                  : {}),
+              });
               const worktree = yield* gitWorkflow.createWorktree({
                 cwd: bootstrap.prepareWorktree.projectCwd,
                 refName: bootstrap.prepareWorktree.baseBranch,
                 newRefName: bootstrap.prepareWorktree.branch,
-                path: null,
+                path: worktreePath,
               });
               targetWorktreePath = worktree.worktree.path;
               yield* orchestrationEngine.dispatch({
@@ -1260,7 +1287,20 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
         [WS_METHODS.vcsCreateWorktree]: (input) =>
           observeRpcEffect(
             WS_METHODS.vcsCreateWorktree,
-            gitWorkflow.createWorktree(input).pipe(Effect.tap(() => refreshGitStatus(input.cwd))),
+            Effect.gen(function* () {
+              const worktreePath = yield* resolveCreateWorktreePath({
+                cwd: input.cwd,
+                refName: input.refName,
+                path: input.path,
+                ...(input.newRefName ? { newRefName: input.newRefName } : {}),
+              });
+              return yield* gitWorkflow
+                .createWorktree({
+                  ...input,
+                  path: worktreePath,
+                })
+                .pipe(Effect.tap(() => refreshGitStatus(input.cwd)));
+            }),
             { "rpc.aggregate": "vcs" },
           ),
         [WS_METHODS.vcsRemoveWorktree]: (input) =>

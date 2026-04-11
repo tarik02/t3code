@@ -109,6 +109,10 @@ import {
   type ProjectSetupScriptRunnerShape,
 } from "./project/Services/ProjectSetupScriptRunner.ts";
 import {
+  WorktreeLocationResolver,
+  type WorktreeLocationResolverShape,
+} from "./project/Services/WorktreeLocationResolver.ts";
+import {
   RepositoryIdentityResolver,
   type RepositoryIdentityResolverShape,
 } from "./project/Services/RepositoryIdentityResolver.ts";
@@ -353,6 +357,7 @@ const buildAppUnderTest = (options?: {
     sourceControlRepositoryService?: Partial<SourceControlRepositoryService.SourceControlRepositoryServiceShape>;
     reviewService?: Partial<ReviewService.ReviewServiceShape>;
     vcsStatusBroadcaster?: Partial<VcsStatusBroadcaster.VcsStatusBroadcasterShape>;
+    worktreeLocationResolver?: Partial<WorktreeLocationResolverShape>;
     projectSetupScriptRunner?: Partial<ProjectSetupScriptRunnerShape>;
     terminalManager?: Partial<TerminalManagerShape>;
     orchestrationEngine?: Partial<OrchestrationEngineShape>;
@@ -660,6 +665,13 @@ const buildAppUnderTest = (options?: {
         Layer.mock(ProjectSetupScriptRunner)({
           runForThread: () => Effect.succeed({ status: "no-script" as const }),
           ...options?.layers?.projectSetupScriptRunner,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(WorktreeLocationResolver)({
+          resolveCreateWorktreePath: (input) =>
+            Effect.succeed(path.join("/tmp/worktrees", input.name.replace(/\//g, "-"))),
+          ...options?.layers?.worktreeLocationResolver,
         }),
       ),
       Layer.provide(
@@ -6140,7 +6152,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           cwd: "/tmp/project",
           refName: "main",
           newRefName: "t3code/bootstrap-refName",
-          path: null,
+          path: "/tmp/worktrees/t3code-bootstrap-refName",
         });
         assert.deepEqual(runForThread.mock.calls[0]?.[0], {
           threadId: ThreadId.make("thread-bootstrap"),
