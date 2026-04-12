@@ -66,7 +66,7 @@ export function getWindowControlsLayout(options?: {
 
 export function getWindowChromeOptions(linuxTitleBarMode: LinuxTitleBarMode): {
   titleBarStyle?: "hiddenInset" | "hidden";
-  titleBarOverlay?: { height: number };
+  titleBarOverlay?: { height: number; color?: string };
   trafficLightPosition?: { x: number; y: number };
 } {
   if (platform === "macos") {
@@ -86,6 +86,7 @@ export function getWindowChromeOptions(linuxTitleBarMode: LinuxTitleBarMode): {
         titleBarStyle: "hidden",
         titleBarOverlay: {
           height: DESKTOP_TITLEBAR_HEIGHT,
+          color: "#01000000", // #00000000 doesn't work falling back to default value, not sure why, probably some bug in Electron
         },
       };
     }
