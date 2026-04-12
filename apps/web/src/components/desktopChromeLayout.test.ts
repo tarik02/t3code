@@ -64,8 +64,9 @@ describe("desktop chrome layout helpers", () => {
         windowControlsLayout: null,
       }),
     ).toEqual({
-      "--desktop-chrome-safe-inline-start": "env(safe-area-inset-left)",
-      "--desktop-chrome-safe-inline-end": "env(safe-area-inset-right)",
+      "--desktop-chrome-safe-inline-start": "env(titlebar-area-x, 0px)",
+      "--desktop-chrome-safe-inline-end":
+        "calc(100vw - env(titlebar-area-width, 100vw) - env(titlebar-area-x, 0px))",
       "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
     });
   });
