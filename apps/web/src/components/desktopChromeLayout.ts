@@ -1,6 +1,9 @@
+import type { DesktopWindowControlsLayout, Platform } from "@t3tools/contracts";
+import type { LinuxTitleBarMode } from "@t3tools/contracts/settings";
 import type * as React from "react";
 
 export const DESKTOP_CHROME_TITLEBAR_HEIGHT_PX = 52;
+const DESKTOP_CHROME_MACOS_SAFE_INLINE_START_PX = 90;
 const DESKTOP_CHROME_SAFE_INLINE_BASE_REM = 1;
 const DESKTOP_CHROME_SAFE_INLINE_STEP_REM = 1.75;
 
@@ -27,5 +30,50 @@ export function resolveDesktopChromeSafeAreaStyle(input: {
   return {
     "--desktop-chrome-safe-inline-start": leftSafeInline,
     "--desktop-chrome-safe-inline-end": rightSafeInline,
+  };
+}
+
+export function resolveDesktopChromeRootStyle(input: {
+  platform: Platform;
+  linuxTitleBarMode: LinuxTitleBarMode;
+  windowControlsLayout: DesktopWindowControlsLayout | null;
+}): DesktopChromeSafeAreaStyle {
+  if (input.platform === "macos") {
+    return {
+      "--desktop-chrome-safe-inline-start": `${DESKTOP_CHROME_MACOS_SAFE_INLINE_START_PX}px`,
+      "--desktop-chrome-safe-inline-end": "0",
+      "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
+    };
+  }
+
+  if (
+    input.platform === "linux" &&
+    input.linuxTitleBarMode === "custom" &&
+    input.windowControlsLayout
+  ) {
+    return {
+      ...resolveDesktopChromeSafeAreaStyle({
+        leftControlCount: input.windowControlsLayout.left.length,
+        rightControlCount: input.windowControlsLayout.right.length,
+      }),
+      "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
+    };
+  }
+
+  if (
+    input.platform === "windows" ||
+    (input.platform === "linux" && input.linuxTitleBarMode === "overlay")
+  ) {
+    return {
+      "--desktop-chrome-safe-inline-start": "env(safe-area-inset-left)",
+      "--desktop-chrome-safe-inline-end": "env(safe-area-inset-right)",
+      "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
+    };
+  }
+
+  return {
+    "--desktop-chrome-safe-inline-start": "0",
+    "--desktop-chrome-safe-inline-end": "0",
+    "--desktop-chrome-titlebar-height": "0",
   };
 }

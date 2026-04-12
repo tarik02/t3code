@@ -1,6 +1,6 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
-import { usesDesktopChromeHeader, usesWCO } from "../env";
+import { usesDesktopChromeHeader } from "../env";
 import { cn } from "~/lib/utils";
 
 export function NoActiveThreadState() {

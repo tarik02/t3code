@@ -14,11 +14,7 @@ import { APP_DISPLAY_NAME } from "../branding";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
 import { CommandPalette } from "../components/CommandPalette";
 import { DesktopChromeOverlay } from "../components/DesktopChromeOverlay";
-import {
-  type DesktopChromeSafeAreaStyle,
-  resolveDesktopChromeSafeAreaStyle,
-  DESKTOP_CHROME_TITLEBAR_HEIGHT_PX,
-} from "../components/desktopChromeLayout";
+import { resolveDesktopChromeRootStyle } from "../components/desktopChromeLayout";
 import {
   SlowRpcAckToastCoordinator,
   WebSocketConnectionCoordinator,
@@ -28,7 +24,12 @@ import { Button } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider, toastManager } from "../components/ui/toast";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { readLocalApi } from "../localApi";
-import { runningLinuxTitleBarMode, usesCustomWindowControls, windowControlsLayout } from "../env";
+import {
+  desktopPlatform,
+  runningLinuxTitleBarMode,
+  usesCustomWindowControls,
+  windowControlsLayout,
+} from "../env";
 import {
   getServerConfigUpdatedNotification,
   ServerConfigUpdatedNotification,
@@ -74,20 +75,11 @@ export const Route = createRootRouteWithContext<{
 function RootRouteView() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const { authGateState } = Route.useRouteContext();
-  const desktopChromeStyle: DesktopChromeSafeAreaStyle =
-    usesCustomWindowControls && windowControlsLayout && runningLinuxTitleBarMode === "custom"
-      ? {
-          ...resolveDesktopChromeSafeAreaStyle({
-            leftControlCount: windowControlsLayout.left.length,
-            rightControlCount: windowControlsLayout.right.length,
-          }),
-          "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
-        }
-      : {
-          "--desktop-chrome-safe-inline-start": "env(safe-area-inset-left)",
-          "--desktop-chrome-safe-inline-end": "env(safe-area-inset-right)",
-          "--desktop-chrome-titlebar-height": `${DESKTOP_CHROME_TITLEBAR_HEIGHT_PX}px`,
-        };
+  const desktopChromeStyle = resolveDesktopChromeRootStyle({
+    platform: desktopPlatform,
+    linuxTitleBarMode: runningLinuxTitleBarMode,
+    windowControlsLayout,
+  });
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

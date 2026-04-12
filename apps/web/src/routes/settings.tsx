@@ -8,7 +8,7 @@ import {
   resolveInitialServerAuthGateState,
 } from "../environments/primary";
 import { useSettingsRestore } from "../components/settings/SettingsPanels";
-import { usesDesktopChromeHeader, usesWCO } from "../env";
+import { usesDesktopChromeHeader } from "../env";
 import { Button } from "../components/ui/button";
 import { SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 
