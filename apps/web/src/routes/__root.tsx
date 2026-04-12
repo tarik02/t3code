@@ -28,7 +28,7 @@ import { Button } from "../components/ui/button";
 import { AnchoredToastProvider, ToastProvider, toastManager } from "../components/ui/toast";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { readLocalApi } from "../localApi";
-import { usesCustomWindowControls, windowControlsLayout } from "../env";
+import { runningLinuxTitleBarMode, usesCustomWindowControls, windowControlsLayout } from "../env";
 import {
   getServerConfigUpdatedNotification,
   ServerConfigUpdatedNotification,
@@ -75,7 +75,7 @@ function RootRouteView() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const { authGateState } = Route.useRouteContext();
   const desktopChromeStyle: DesktopChromeSafeAreaStyle =
-    usesCustomWindowControls && windowControlsLayout
+    usesCustomWindowControls && windowControlsLayout && runningLinuxTitleBarMode === "custom"
       ? {
           ...resolveDesktopChromeSafeAreaStyle({
             leftControlCount: windowControlsLayout.left.length,
