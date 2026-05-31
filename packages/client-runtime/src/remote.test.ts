@@ -12,7 +12,7 @@ import {
   issueRemoteWebSocketToken,
   remoteHttpClientLayer,
   RemoteEnvironmentAuthTimeoutError,
-  resolveRemoteWebSocketConnectionUrl,
+  resolveRemoteWebSocketBaseUrl,
 } from "./remote.ts";
 
 type FetchCall = readonly [input: RequestInfo | URL, init: RequestInit];
@@ -227,7 +227,7 @@ describe("remote", () => {
     }).pipe(Effect.provide(TestClock.layer())),
   );
 
-  it.effect("mints a websocket url that targets the rpc route with a short-lived ws token", () =>
+  it.effect("mints an authenticated websocket base url with a short-lived ws token", () =>
     Effect.gen(function* () {
       const fetch = recordedFetch(
         Response.json(
@@ -239,13 +239,13 @@ describe("remote", () => {
         ),
       );
 
-      const url = yield* resolveRemoteWebSocketConnectionUrl({
+      const url = yield* resolveRemoteWebSocketBaseUrl({
         wsBaseUrl: "wss://remote.example.com/",
         httpBaseUrl: "https://remote.example.com/",
         bearerToken: "bearer-token",
       }).pipe(provideRemoteHttp(fetch.fetchFn));
 
-      expect(url).toBe("wss://remote.example.com/ws?wsToken=ws-token");
+      expect(url).toBe("wss://remote.example.com/?wsToken=ws-token");
     }),
   );
 });

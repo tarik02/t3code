@@ -16,7 +16,7 @@ import {
   fetchRemoteEnvironmentDescriptor,
   fetchRemoteSessionState,
   isRemoteEnvironmentAuthHttpError,
-  resolveRemoteWebSocketConnectionUrl,
+  resolveRemoteWebSocketBaseUrl,
 } from "@t3tools/client-runtime";
 
 import { type QueryClient } from "@tanstack/react-query";
@@ -742,7 +742,7 @@ async function fetchDesktopSshSessionState(httpBaseUrl: string, bearerToken: str
   return await getDesktopSshBridge().fetchSshSessionState(httpBaseUrl, bearerToken);
 }
 
-async function resolveDesktopSshWebSocketConnectionUrl(
+async function resolveDesktopSshWebSocketBaseUrl(
   wsBaseUrl: string,
   httpBaseUrl: string,
   bearerToken: string,
@@ -1159,13 +1159,13 @@ function createSavedEnvironmentClient(
           throw new Error(`Saved environment ${environmentId} not found.`);
         }
         return record.desktopSsh
-          ? await resolveDesktopSshWebSocketConnectionUrl(
+          ? await resolveDesktopSshWebSocketBaseUrl(
               record.wsBaseUrl,
               record.httpBaseUrl,
               bearerToken,
             )
           : await remoteHttpRuntime.runPromise(
-              resolveRemoteWebSocketConnectionUrl({
+              resolveRemoteWebSocketBaseUrl({
                 wsBaseUrl: record.wsBaseUrl,
                 httpBaseUrl: record.httpBaseUrl,
                 bearerToken,

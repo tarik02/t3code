@@ -26,7 +26,6 @@ const RemoteAuthErrorBody = Schema.Struct({
   error: Schema.optional(Schema.String),
 });
 const decodeRemoteAuthErrorBody = decodeJsonResult(RemoteAuthErrorBody);
-const WS_RPC_PATH = "/ws";
 
 const remoteEndpointUrl = (httpBaseUrl: string, pathname: string): string => {
   const url = new URL(httpBaseUrl);
@@ -248,8 +247,8 @@ export const issueRemoteWebSocketToken = Effect.fn(
   });
 });
 
-export const resolveRemoteWebSocketConnectionUrl = Effect.fn(
-  "clientRuntime.remote.resolveRemoteWebSocketConnectionUrl",
+export const resolveRemoteWebSocketBaseUrl = Effect.fn(
+  "clientRuntime.remote.resolveRemoteWebSocketBaseUrl",
 )(function* (input: {
   readonly wsBaseUrl: string;
   readonly httpBaseUrl: string;
@@ -264,7 +263,8 @@ export const resolveRemoteWebSocketConnectionUrl = Effect.fn(
 
   const url = new URL(input.wsBaseUrl);
   const basePath = yield* normalizeBasePath(new URL(input.httpBaseUrl).pathname);
-  url.pathname = `${basePath}${WS_RPC_PATH}`;
+  // WsRpcProtocol owns the RPC endpoint path; this helper only returns the authenticated base URL.
+  url.pathname = `${basePath}/`;
   url.hash = "";
   url.searchParams.set("wsToken", issued.token);
   return url.toString();

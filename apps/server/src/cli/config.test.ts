@@ -14,7 +14,7 @@ import {
   type DesktopBackendBootstrap as DesktopBackendBootstrapValue,
 } from "@t3tools/contracts";
 import * as NetService from "@t3tools/shared/Net";
-import { ROOT_BASE_PATH, normalizeBasePath } from "@t3tools/shared/basePath";
+import { ROOT_BASE_PATH } from "@t3tools/shared/basePath";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { deriveServerPaths } from "../config.ts";
 import { resolveServerConfig } from "./config.ts";
@@ -47,8 +47,6 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     otlpExportIntervalMs: 10_000,
     otlpServiceName: "t3-server",
   } as const;
-  const agentBasePath = Effect.runSync(normalizeBasePath("/agent"));
-
   const openBootstrapFd = Effect.fn(function* (payload: DesktopBackendBootstrapValue) {
     const fs = yield* FileSystem.FileSystem;
     const filePath = yield* fs.makeTempFileScoped({ prefix: "t3-bootstrap-", suffix: ".ndjson" });
@@ -143,7 +141,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
           bootstrapFd: Option.none(),
           autoBootstrapProjectFromCwd: Option.some(true),
           logWebSocketEvents: Option.some(true),
-          basePath: Option.some("/agent"),
+          basePath: Option.none(),
           tailscaleServeEnabled: Option.some(true),
           tailscaleServePort: Option.some(8443),
         },
@@ -187,7 +185,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: true,
         logWebSocketEvents: true,
-        basePath: agentBasePath,
+        basePath: ROOT_BASE_PATH,
         tailscaleServeEnabled: true,
         tailscaleServePort: 8443,
       });
