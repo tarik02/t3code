@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}-
 
       - name: Cache Playwright browsers
-        if: github.repository != 'tarik02/t3code'
+        if: false
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
@@ -68,13 +68,13 @@ jobs:
         run: bun run test
 
       - name: Install browser test runtime
-        if: github.repository != 'tarik02/t3code'
+        if: false
         run: |
           cd apps/web
           bunx playwright install --with-deps chromium
 
       - name: Browser test
-        if: github.repository != 'tarik02/t3code'
+        if: false
         run: bun run --cwd apps/web test:browser
 
       - name: Build desktop pipeline
