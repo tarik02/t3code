@@ -670,7 +670,9 @@ const buildAppUnderTest = (options?: {
       Layer.provide(
         Layer.mock(WorktreeLocationResolver)({
           resolveCreateWorktreePath: (input) =>
-            Effect.succeed(path.join("/tmp/worktrees", input.name.replace(/\//g, "-"))),
+            Effect.succeed(
+              path.join(input.projectRoot, ".mock-worktrees", input.name.replace(/\//g, "-")),
+            ),
           ...options?.layers?.worktreeLocationResolver,
         }),
       ),
@@ -6152,7 +6154,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           cwd: "/tmp/project",
           refName: "main",
           newRefName: "t3code/bootstrap-refName",
-          path: "/tmp/worktrees/t3code-bootstrap-refName",
+          path: "/tmp/project/.mock-worktrees/t3code-bootstrap-refName",
         });
         assert.deepEqual(runForThread.mock.calls[0]?.[0], {
           threadId: ThreadId.make("thread-bootstrap"),
