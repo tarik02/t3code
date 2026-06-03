@@ -7,6 +7,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 
 import { ServerConfig } from "../../config.ts";
 import { toPersistenceSqlError, type ProjectionRepositoryError } from "../Errors.ts";
@@ -55,6 +56,10 @@ const LegacyGoalRow = Schema.Struct({
   goalJson: Schema.String,
 });
 
+const ListProjectionThreadGoalsInput = Schema.Struct({
+  threadIds: Schema.Array(ThreadId),
+});
+
 const buildForkClientLayer = (forkDbPath: string) =>
   makeRuntimeSqliteLayer({
     filename: forkDbPath,
@@ -90,14 +95,18 @@ const listGoalsByThreadIds = Effect.fn("listGoalsByThreadIds")(function* (input:
   readonly threadIds: ReadonlyArray<ThreadId>;
 }) {
   const forkSql = yield* SqlClient.SqlClient;
-  const rows = yield* forkSql<Schema.Schema.Type<typeof ProjectionThreadGoalDbRow>>`
-    SELECT
-      thread_id AS "threadId",
-      goal_json AS "goal"
-    FROM projection_thread_goals
-    WHERE thread_id IN ${forkSql.in(input.threadIds)}
-  `;
-  return rows;
+  return yield* SqlSchema.findAll({
+    Request: ListProjectionThreadGoalsInput,
+    Result: ProjectionThreadGoalDbRow,
+    execute: ({ threadIds }) =>
+      forkSql`
+        SELECT
+          thread_id AS "threadId",
+          goal_json AS "goal"
+        FROM projection_thread_goals
+        WHERE thread_id IN ${forkSql.in(threadIds)}
+      `,
+  })(input);
 });
 
 export const ProjectionThreadGoalRepositoryLive = Layer.effect(
