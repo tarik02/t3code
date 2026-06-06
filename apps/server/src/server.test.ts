@@ -671,7 +671,7 @@ const buildAppUnderTest = (options?: {
         Layer.mock(WorktreeLocationResolver)({
           resolveCreateWorktreePath: (input) =>
             Effect.succeed(
-              path.join(input.projectRoot, ".mock-worktrees", input.name.replace(/\//g, "-")),
+              `${input.projectRoot}/.mock-worktrees/${input.name.replace(/\//g, "-")}`,
             ),
           ...options?.layers?.worktreeLocationResolver,
         }),

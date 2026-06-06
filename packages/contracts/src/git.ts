@@ -357,7 +357,7 @@ export class WorktreeLocationResolverError extends Schema.TaggedErrorClass<Workt
   {
     projectRoot: Schema.String,
     detail: Schema.String,
-    cause: Schema.optional(Schema.Defect),
+    cause: Schema.optional(Schema.Defect()),
   },
 ) {
   override get message(): string {

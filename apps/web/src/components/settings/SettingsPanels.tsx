@@ -964,14 +964,14 @@ export function GeneralSettingsPanel() {
               <div className="flex flex-wrap gap-1.5">
                 {WORKTREE_LOCATION_TEMPLATE_VARIABLES.map((variable) => (
                   <button
-                    key={variable}
+                    key={variable.token}
                     type="button"
                     className="rounded border border-border/70 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     onClick={() =>
-                      setWorktreeLocationTemplateDraft((current) => `${current}${variable}`)
+                      setWorktreeLocationTemplateDraft((current) => `${current}${variable.token}`)
                     }
                   >
-                    {variable}
+                    {variable.token}
                   </button>
                 ))}
               </div>

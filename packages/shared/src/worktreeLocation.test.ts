@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
   createWorktreeLocationTemplateContext,
   getDefaultWorktreesDir,
@@ -7,7 +7,7 @@ import {
   resolveWorktreeLocation,
   substituteWorktreeLocationTemplate,
   validateWorktreeLocationTemplate,
-} from "./worktreeLocation";
+} from "./worktreeLocation.ts";
 
 describe("worktreeLocation helpers", () => {
   it("validates start-of-path and $WORKTREE_NAME requirements", () => {

@@ -1,6 +1,5 @@
 import { WorktreeLocationResolverError } from "@t3tools/contracts";
 import { Effect, Context, Layer } from "effect";
-import path from "node:path";
 
 export interface ResolveCreateWorktreePathInput {
   readonly projectRoot: string;
@@ -19,9 +18,7 @@ export class WorktreeLocationResolver extends Context.Service<
 >()("t3/project/Services/WorktreeLocationResolver") {
   static readonly layerTest = ({
     resolveCreateWorktreePath = (input) =>
-      Effect.succeed(
-        path.join(input.projectRoot, ".mock-worktrees", input.name.replace(/\//g, "-")),
-      ),
+      Effect.succeed(`${input.projectRoot}/.mock-worktrees/${input.name.replace(/\//g, "-")}`),
   }: {
     resolveCreateWorktreePath?: WorktreeLocationResolverShape["resolveCreateWorktreePath"];
   } = {}) =>
