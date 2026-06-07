@@ -7,7 +7,6 @@
  * @module TerminalManager
  */
 import {
-  TerminalAttachInput,
   TerminalAttachStreamEvent,
   TerminalClearInput,
   TerminalCloseInput,
@@ -25,6 +24,7 @@ import {
   TerminalSessionStatus,
   TerminalWriteInput,
 } from "@t3tools/contracts";
+import type { TerminalAttachRuntimeInput } from "../TerminalAttachRuntimeInput.ts";
 import type { PtyProcess } from "./PTY.ts";
 import * as Effect from "effect/Effect";
 import * as Context from "effect/Context";
@@ -88,7 +88,7 @@ export interface TerminalManagerShape {
    * Returns an unsubscribe function.
    */
   readonly attachStream: (
-    input: TerminalAttachInput,
+    input: TerminalAttachRuntimeInput,
     listener: (event: TerminalAttachStreamEvent) => Effect.Effect<void>,
   ) => Effect.Effect<() => void, TerminalError>;
 

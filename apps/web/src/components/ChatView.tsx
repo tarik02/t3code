@@ -560,10 +560,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
       next.set(session.target.terminalId, {
         cwd: launchContext?.cwd ?? summary.cwd,
         worktreePath: worktreePathForLaunch,
-        runtimeEnv: projectScriptRuntimeEnv({
-          project: { cwd: project.cwd },
-          worktreePath: worktreePathForLaunch,
-        }),
+        runtimeEnv: {},
       });
     }
 
@@ -610,16 +607,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         : null),
     [effectiveWorktreePath, launchContext?.cwd, project],
   );
-  const runtimeEnv = useMemo(
-    () =>
-      project
-        ? projectScriptRuntimeEnv({
-            project: { cwd: project.cwd },
-            worktreePath: effectiveWorktreePath,
-          })
-        : {},
-    [effectiveWorktreePath, project],
-  );
+  const runtimeEnv = useMemo(() => ({}), []);
 
   const bumpFocusRequestId = useCallback(() => {
     if (!visible) {
@@ -637,7 +625,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
 
   const splitTerminal = useCallback(() => {
     const api = readEnvironmentApi(threadRef.environmentId);
-    if (!api || !cwd) {
+    if (!api || !cwd || !project) {
       return;
     }
     const terminalId = nextTerminalId(serverOrderedTerminalIds);
@@ -648,9 +636,9 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         await api.terminal.open({
           threadId,
           terminalId,
+          projectId: project.id,
           cwd,
           ...(effectiveWorktreePath != null ? { worktreePath: effectiveWorktreePath } : {}),
-          env: runtimeEnv,
         });
       } catch {
         // Opening failed; the tab is already in the store — user can retry or close it.
@@ -660,16 +648,16 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     bumpFocusRequestId,
     cwd,
     effectiveWorktreePath,
-    runtimeEnv,
     serverOrderedTerminalIds,
     storeSplitTerminal,
     threadId,
     threadRef,
+    project,
   ]);
 
   const createNewTerminal = useCallback(() => {
     const api = readEnvironmentApi(threadRef.environmentId);
-    if (!api || !cwd) {
+    if (!api || !cwd || !project) {
       return;
     }
     const terminalId = nextTerminalId(serverOrderedTerminalIds);
@@ -680,9 +668,9 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         await api.terminal.open({
           threadId,
           terminalId,
+          projectId: project.id,
           cwd,
           ...(effectiveWorktreePath != null ? { worktreePath: effectiveWorktreePath } : {}),
-          env: runtimeEnv,
         });
       } catch {
         // Opening failed; the tab is already in the store — user can retry or close it.
@@ -692,11 +680,11 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     bumpFocusRequestId,
     cwd,
     effectiveWorktreePath,
-    runtimeEnv,
     serverOrderedTerminalIds,
     storeNewTerminal,
     threadId,
     threadRef,
+    project,
   ]);
 
   const activateTerminal = useCallback(
@@ -2047,12 +2035,9 @@ export default function ChatView(props: ChatViewProps) {
         await api.terminal.open({
           threadId: activeThreadId,
           terminalId,
+          projectId: activeProject.id,
           cwd: cwdForOpen,
           ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
-          env: projectScriptRuntimeEnv({
-            project: { cwd: activeProject.cwd },
-            worktreePath: activeThreadWorktreePath,
-          }),
         });
       } catch {
         // Opening failed; the tab is already in the store — user can retry or close it.
@@ -2089,12 +2074,9 @@ export default function ChatView(props: ChatViewProps) {
         await api.terminal.open({
           threadId: activeThreadId,
           terminalId,
+          projectId: activeProject.id,
           cwd: cwdForOpen,
           ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
-          env: projectScriptRuntimeEnv({
-            project: { cwd: activeProject.cwd },
-            worktreePath: activeThreadWorktreePath,
-          }),
         });
       } catch {
         // Opening failed; the tab is already in the store — user can retry or close it.
@@ -2178,13 +2160,8 @@ export default function ChatView(props: ChatViewProps) {
       }
       setTerminalFocusRequestId((value) => value + 1);
 
-      const runtimeEnv = projectScriptRuntimeEnv({
-        project: {
-          cwd: activeProject.cwd,
-        },
-        worktreePath: targetWorktreePath,
-        ...(options?.env ? { extraEnv: options.env } : {}),
-      });
+      const runtimeEnv = projectScriptRuntimeEnv(options?.env ? { extraEnv: options.env } : {});
+      const customRuntimeEnv = Object.keys(runtimeEnv).length > 0 ? { env: runtimeEnv } : {};
       const targetTerminalId = shouldCreateNewTerminal
         ? nextTerminalId(activeKnownTerminalIds)
         : baseTerminalId;
@@ -2192,18 +2169,20 @@ export default function ChatView(props: ChatViewProps) {
         ? {
             threadId: activeThreadId,
             terminalId: targetTerminalId,
+            projectId: activeProject.id,
             cwd: targetCwd,
             ...(targetWorktreePath !== null ? { worktreePath: targetWorktreePath } : {}),
-            env: runtimeEnv,
+            ...customRuntimeEnv,
             cols: SCRIPT_TERMINAL_COLS,
             rows: SCRIPT_TERMINAL_ROWS,
           }
         : {
             threadId: activeThreadId,
             terminalId: targetTerminalId,
+            projectId: activeProject.id,
             cwd: targetCwd,
             ...(targetWorktreePath !== null ? { worktreePath: targetWorktreePath } : {}),
-            env: runtimeEnv,
+            ...customRuntimeEnv,
           };
 
       if (shouldCreateNewTerminal) {

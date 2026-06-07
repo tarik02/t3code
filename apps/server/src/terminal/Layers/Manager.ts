@@ -1,6 +1,6 @@
 import {
   DEFAULT_TERMINAL_ID,
-  type TerminalAttachInput,
+  ProjectId,
   type TerminalAttachStreamEvent,
   type TerminalEvent,
   type TerminalMetadataStreamEvent,
@@ -10,6 +10,8 @@ import {
   type TerminalSummary,
 } from "@t3tools/contracts";
 import { makeKeyedCoalescingWorker } from "@t3tools/shared/KeyedCoalescingWorker";
+import { isManagedRuntimeEnvKey } from "../../launchEnv/launchEnvUtils.ts";
+import type { TerminalAttachRuntimeInput } from "../TerminalAttachRuntimeInput.ts";
 import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -98,6 +100,7 @@ interface ShellCandidate {
 interface TerminalStartInput {
   threadId: string;
   terminalId: string;
+  projectId: ProjectId;
   cwd: string;
   worktreePath?: string | null;
   cols: number;
@@ -885,7 +888,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
 
 function shouldExcludeTerminalEnvKey(key: string): boolean {
   const normalizedKey = key.toUpperCase();
-  if (normalizedKey.startsWith("T3CODE_")) {
+  if (isManagedRuntimeEnvKey(normalizedKey)) {
     return true;
   }
   if (normalizedKey.startsWith("VITE_")) {
@@ -913,10 +916,12 @@ function createTerminalSpawnEnv(
 }
 
 function normalizedRuntimeEnv(
-  env: Record<string, string> | undefined,
+  env: Readonly<Record<string, string | undefined>> | undefined,
 ): Record<string, string> | null {
   if (!env) return null;
-  const entries = Object.entries(env);
+  const entries = Object.entries(env).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  );
   if (entries.length === 0) return null;
   return Object.fromEntries(entries.toSorted(([left], [right]) => left.localeCompare(right)));
 }
@@ -1884,6 +1889,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
     const openLocked = Effect.fn("terminal.openLocked")(function* (input: TerminalOpenInput) {
       const terminalId = input.terminalId;
       yield* assertValidCwd(input.cwd);
+      const nextRuntimeEnv = normalizedRuntimeEnv(input.env);
 
       const sessionKey = toSessionKey(input.threadId, terminalId);
       const existing = yield* getSession(input.threadId, terminalId);
@@ -1915,7 +1921,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           unsubscribeExit: null,
           hasRunningSubprocess: false,
           childCommandLabel: null,
-          runtimeEnv: normalizedRuntimeEnv(input.env),
+          runtimeEnv: nextRuntimeEnv,
         };
 
         const createdSession = session;
@@ -1931,6 +1937,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           {
             threadId: input.threadId,
             terminalId,
+            projectId: input.projectId,
             cwd: input.cwd,
             ...(input.worktreePath !== undefined ? { worktreePath: input.worktreePath } : {}),
             cols,
@@ -1943,7 +1950,6 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
       }
 
       const liveSession = existing.value;
-      const nextRuntimeEnv = normalizedRuntimeEnv(input.env);
       const currentRuntimeEnv = liveSession.runtimeEnv;
       const targetCols = input.cols ?? liveSession.cols;
       const targetRows = input.rows ?? liveSession.rows;
@@ -1983,6 +1989,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           {
             threadId: input.threadId,
             terminalId,
+            projectId: input.projectId,
             cwd: input.cwd,
             worktreePath: liveSession.worktreePath,
             cols: targetCols,
@@ -2007,7 +2014,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
     const open: TerminalManagerShape["open"] = (input) =>
       withThreadLock(input.threadId, openLocked(input));
 
-    const openOrAttachForStream = (input: TerminalAttachInput) =>
+    const openOrAttachForStream = (input: TerminalAttachRuntimeInput) =>
       withThreadLock(
         input.threadId,
         Effect.gen(function* () {
@@ -2021,7 +2028,6 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
                 terminalId,
               });
             }
-
             return yield* openLocked({
               ...input,
               terminalId,
@@ -2284,6 +2290,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
           yield* increment(terminalRestartsTotal, { scope: "thread" });
           const terminalId = input.terminalId;
           yield* assertValidCwd(input.cwd);
+          const nextRuntimeEnv = normalizedRuntimeEnv(input.env);
 
           const sessionKey = toSessionKey(input.threadId, terminalId);
           const existingSession = yield* getSession(input.threadId, terminalId);
@@ -2314,7 +2321,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
               unsubscribeExit: null,
               hasRunningSubprocess: false,
               childCommandLabel: null,
-              runtimeEnv: normalizedRuntimeEnv(input.env),
+              runtimeEnv: nextRuntimeEnv,
             };
             const createdSession = session;
             yield* modifyManagerState((state) => {
@@ -2328,7 +2335,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
             yield* stopProcess(session);
             session.cwd = input.cwd;
             session.worktreePath = input.worktreePath ?? null;
-            session.runtimeEnv = normalizedRuntimeEnv(input.env);
+            session.runtimeEnv = nextRuntimeEnv;
           }
 
           const cols = input.cols ?? session.cols;
@@ -2345,6 +2352,7 @@ export const makeTerminalManagerWithOptions = Effect.fn("makeTerminalManagerWith
             {
               threadId: input.threadId,
               terminalId,
+              projectId: input.projectId,
               cwd: input.cwd,
               ...(input.worktreePath !== undefined ? { worktreePath: input.worktreePath } : {}),
               cols,

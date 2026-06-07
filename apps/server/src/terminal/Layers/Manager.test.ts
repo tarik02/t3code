@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
   DEFAULT_TERMINAL_ID,
+  ProjectId,
   type TerminalAttachStreamEvent,
   type TerminalEvent,
   type TerminalMetadataStreamEvent,
@@ -157,6 +158,7 @@ function openInput(overrides: Partial<TerminalOpenInput> = {}): TerminalOpenInpu
   return {
     threadId: "thread-1",
     terminalId: DEFAULT_TERMINAL_ID,
+    projectId: ProjectId.make("project-1"),
     cwd: process.cwd(),
     cols: 100,
     rows: 24,
@@ -168,6 +170,7 @@ function restartInput(overrides: Partial<TerminalRestartInput> = {}): TerminalRe
   return {
     threadId: "thread-1",
     terminalId: DEFAULT_TERMINAL_ID,
+    projectId: ProjectId.make("project-1"),
     cwd: process.cwd(),
     cols: 100,
     rows: 24,
@@ -302,6 +305,7 @@ it.layer(
         {
           threadId: "thread-1",
           terminalId: DEFAULT_TERMINAL_ID,
+          projectId: ProjectId.make("project-1"),
           cols: 100,
           rows: 40,
         },
@@ -1485,6 +1489,7 @@ it.layer(
         {
           threadId: "thread-1",
           terminalId: DEFAULT_TERMINAL_ID,
+          projectId: ProjectId.make("project-1"),
         },
         (event) => Ref.update(attachEvents, (events) => [...events, event]),
       );

@@ -1,9 +1,10 @@
 import { ProjectId } from "@t3tools/contracts";
-import { projectScriptRuntimeEnv, setupProjectScript } from "@t3tools/shared/projectScripts";
+import { setupProjectScript } from "@t3tools/shared/projectScripts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
+import { LaunchEnv } from "../../launchEnv/Services/LaunchEnv.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { TerminalManager } from "../../terminal/Services/Manager.ts";
 import {
@@ -15,6 +16,7 @@ import {
 const makeProjectSetupScriptRunner = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const terminalManager = yield* TerminalManager;
+  const launchEnv = yield* LaunchEnv;
 
   const runForThread: ProjectSetupScriptRunnerShape["runForThread"] = (input) =>
     Effect.gen(function* () {
@@ -46,14 +48,17 @@ const makeProjectSetupScriptRunner = Effect.gen(function* () {
 
       const terminalId = input.preferredTerminalId ?? `setup-${script.id}`;
       const cwd = input.worktreePath;
-      const env = projectScriptRuntimeEnv({
-        project: { cwd: project.workspaceRoot },
+      const env = yield* launchEnv.resolve({
+        projectRoot: project.workspaceRoot,
+        projectId: project.id,
+        threadId: input.threadId,
         worktreePath: input.worktreePath,
       });
 
       yield* terminalManager.open({
         threadId: input.threadId,
         terminalId,
+        projectId: project.id,
         cwd,
         worktreePath: input.worktreePath,
         env,

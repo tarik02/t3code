@@ -702,7 +702,7 @@ export function TerminalViewport({
           ...(worktreePath !== undefined ? { worktreePath } : {}),
           cols: activeTerminal.cols,
           rows: activeTerminal.rows,
-          ...(runtimeEnv ? { env: runtimeEnv } : {}),
+          ...(runtimeEnv && Object.keys(runtimeEnv).length > 0 ? { env: runtimeEnv } : {}),
         },
         onEvent: (event) => {
           if (disposed) return;

@@ -1,11 +1,15 @@
 import type { ProjectScript } from "@t3tools/contracts";
 
-interface ProjectScriptRuntimeEnvInput {
-  project: {
-    cwd: string;
-  };
-  worktreePath?: string | null;
-  extraEnv?: Record<string, string>;
+function stripManagedRuntimeEnvKeys(
+  extraEnv: Record<string, string> | undefined,
+): Record<string, string> {
+  if (!extraEnv) return {};
+  const next: Record<string, string> = {};
+  for (const [key, value] of Object.entries(extraEnv)) {
+    if (key.toUpperCase().startsWith("T3CODE_")) continue;
+    next[key] = value;
+  }
+  return next;
 }
 
 export function projectScriptCwd(input: {
@@ -18,18 +22,11 @@ export function projectScriptCwd(input: {
 }
 
 export function projectScriptRuntimeEnv(
-  input: ProjectScriptRuntimeEnvInput,
+  input: {
+    readonly extraEnv?: Record<string, string>;
+  } = {},
 ): Record<string, string> {
-  const env: Record<string, string> = {
-    T3CODE_PROJECT_ROOT: input.project.cwd,
-  };
-  if (input.worktreePath) {
-    env.T3CODE_WORKTREE_PATH = input.worktreePath;
-  }
-  if (input.extraEnv) {
-    return { ...env, ...input.extraEnv };
-  }
-  return env;
+  return stripManagedRuntimeEnvKeys(input.extraEnv);
 }
 
 export function setupProjectScript(scripts: readonly ProjectScript[]): ProjectScript | null {
