@@ -36,6 +36,7 @@ import {
   PtySpawnError,
 } from "../Services/PTY.ts";
 import { makeTerminalManagerWithOptions } from "./Manager.ts";
+import { terminalLaunchEnvResolverTest } from "../resolveTerminalLaunchEnv.ts";
 
 class WaitForConditionError extends Data.TaggedError("WaitForConditionError")<{
   readonly message: string;
@@ -241,6 +242,7 @@ const createManager = (
         logsDir,
         historyLineLimit,
         ptyAdapter,
+        launchEnvResolver: terminalLaunchEnvResolverTest(ProjectId.make("project-1")),
         ...(options.shellResolver !== undefined ? { shellResolver: options.shellResolver } : {}),
         ...(options.platform !== undefined ? { platform: options.platform } : {}),
         ...(options.env !== undefined ? { env: options.env } : {}),
@@ -305,7 +307,6 @@ it.layer(
         {
           threadId: "thread-1",
           terminalId: DEFAULT_TERMINAL_ID,
-          projectId: ProjectId.make("project-1"),
           cols: 100,
           rows: 40,
         },
@@ -1489,7 +1490,6 @@ it.layer(
         {
           threadId: "thread-1",
           terminalId: DEFAULT_TERMINAL_ID,
-          projectId: ProjectId.make("project-1"),
         },
         (event) => Ref.update(attachEvents, (events) => [...events, event]),
       );

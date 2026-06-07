@@ -41,20 +41,14 @@ import {
   FilesystemBrowseError,
   EnvironmentAuthorizationError,
   ThreadId,
-  TerminalCwdError,
   type ProjectId,
-  type TerminalAttachInput,
   type TerminalAttachStreamEvent,
   type TerminalError,
-  TerminalSessionLookupError,
   type TerminalEvent,
   type TerminalMetadataStreamEvent,
-  type TerminalOpenInput,
-  type TerminalRestartInput,
   WS_METHODS,
   WsRpcGroup,
 } from "@t3tools/contracts";
-import { LaunchEnv } from "./launchEnv/Services/LaunchEnv.ts";
 import { clamp } from "effect/Number";
 import { HttpRouter, HttpServerRequest, HttpServerRespondable } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
@@ -76,7 +70,6 @@ import * as ProviderMaintenanceRunner from "./provider/providerMaintenanceRunner
 import { ServerLifecycleEvents } from "./serverLifecycleEvents.ts";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup.ts";
 import { redactServerSettingsForClient, ServerSettingsService } from "./serverSettings.ts";
-import type { TerminalAttachRuntimeInput } from "./terminal/TerminalAttachRuntimeInput.ts";
 import { TerminalManager } from "./terminal/Services/Manager.ts";
 import { WorkspaceEntries } from "./workspace/Services/WorkspaceEntries.ts";
 import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem.ts";
@@ -251,7 +244,6 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
       const providerRegistry = yield* ProviderRegistry;
       const providerMaintenanceRunner = yield* ProviderMaintenanceRunner.ProviderMaintenanceRunner;
       const config = yield* ServerConfig;
-      const launchEnv = yield* LaunchEnv;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
       const startup = yield* ServerRuntimeStartup;
@@ -321,102 +313,6 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
           method,
           authorizeStream(requiredScopeForMethod(method), stream),
           traceAttributes,
-        );
-      const resolveTerminalRuntimeEnv = (input: {
-        readonly projectId: ProjectId;
-        readonly threadId: string;
-        readonly worktreePath?: string | null | undefined;
-        readonly env?: Record<string, string> | undefined;
-      }): Effect.Effect<Record<string, string>, TerminalCwdError> => {
-        const projectId = input.projectId;
-        return projectionSnapshotQuery.getProjectShellById(projectId).pipe(
-          Effect.mapError(
-            (cause) =>
-              new TerminalCwdError({
-                cwd: projectId,
-                reason: "statFailed",
-                cause,
-              }),
-          ),
-          Effect.flatMap((projectOption) =>
-            Option.match(projectOption, {
-              onNone: () =>
-                Effect.fail(
-                  new TerminalCwdError({
-                    cwd: projectId,
-                    reason: "notFound",
-                  }),
-                ),
-              onSome: (project) =>
-                launchEnv.resolve({
-                  ...(input.env !== undefined ? { extraEnv: input.env } : {}),
-                  projectRoot: project.workspaceRoot,
-                  projectId: project.id,
-                  threadId: input.threadId,
-                  ...(input.worktreePath !== undefined ? { worktreePath: input.worktreePath } : {}),
-                }),
-            }),
-          ),
-        );
-      };
-      const withTerminalOpenRuntimeEnv = (
-        input: TerminalOpenInput,
-      ): Effect.Effect<TerminalOpenInput, TerminalCwdError> =>
-        resolveTerminalRuntimeEnv(input).pipe(
-          Effect.map((env) => ({
-            ...input,
-            env,
-          })),
-        );
-      const withTerminalAttachRuntimeEnv = (
-        input: TerminalAttachInput,
-      ): Effect.Effect<TerminalAttachRuntimeInput, TerminalError> =>
-        Effect.gen(function* () {
-          const threadOption = yield* projectionSnapshotQuery
-            .getThreadShellById(ThreadId.make(input.threadId))
-            .pipe(
-              Effect.mapError(
-                () =>
-                  new TerminalSessionLookupError({
-                    threadId: input.threadId,
-                    terminalId: input.terminalId,
-                  }),
-              ),
-            );
-          const thread = yield* Option.match(threadOption, {
-            onNone: () =>
-              Effect.fail(
-                new TerminalSessionLookupError({
-                  threadId: input.threadId,
-                  terminalId: input.terminalId,
-                }),
-              ),
-            onSome: Effect.succeed,
-          });
-          const worktreePath =
-            input.worktreePath !== undefined ? input.worktreePath : thread.worktreePath;
-          const env = yield* resolveTerminalRuntimeEnv({
-            projectId: thread.projectId,
-            threadId: input.threadId,
-            worktreePath,
-            ...(input.env !== undefined ? { env: input.env } : {}),
-          });
-
-          return {
-            ...input,
-            projectId: thread.projectId,
-            ...(worktreePath !== undefined ? { worktreePath } : {}),
-            env,
-          };
-        });
-      const withTerminalRestartRuntimeEnv = (
-        input: TerminalRestartInput,
-      ): Effect.Effect<TerminalRestartInput, TerminalCwdError> =>
-        resolveTerminalRuntimeEnv(input).pipe(
-          Effect.map((env) => ({
-            ...input,
-            env,
-          })),
         );
       const observeRpcStreamEffect = <A, StreamError, StreamContext, EffectError, EffectContext>(
         method: string,
@@ -1399,25 +1295,15 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
             "rpc.aggregate": "review",
           }),
         [WS_METHODS.terminalOpen]: (input) =>
-          observeRpcEffect(
-            WS_METHODS.terminalOpen,
-            withTerminalOpenRuntimeEnv(input).pipe(Effect.flatMap(terminalManager.open)),
-            {
-              "rpc.aggregate": "terminal",
-            },
-          ),
+          observeRpcEffect(WS_METHODS.terminalOpen, terminalManager.open(input), {
+            "rpc.aggregate": "terminal",
+          }),
         [WS_METHODS.terminalAttach]: (input) =>
           observeRpcStream(
             WS_METHODS.terminalAttach,
             Stream.callback<TerminalAttachStreamEvent, TerminalError>((queue) =>
               Effect.acquireRelease(
-                withTerminalAttachRuntimeEnv(input).pipe(
-                  Effect.flatMap((runtimeInput) =>
-                    terminalManager.attachStream(runtimeInput, (event) =>
-                      Queue.offer(queue, event),
-                    ),
-                  ),
-                ),
+                terminalManager.attachStream(input, (event) => Queue.offer(queue, event)),
                 (unsubscribe) => Effect.sync(unsubscribe),
               ),
             ),
@@ -1436,13 +1322,9 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
             "rpc.aggregate": "terminal",
           }),
         [WS_METHODS.terminalRestart]: (input) =>
-          observeRpcEffect(
-            WS_METHODS.terminalRestart,
-            withTerminalRestartRuntimeEnv(input).pipe(Effect.flatMap(terminalManager.restart)),
-            {
-              "rpc.aggregate": "terminal",
-            },
-          ),
+          observeRpcEffect(WS_METHODS.terminalRestart, terminalManager.restart(input), {
+            "rpc.aggregate": "terminal",
+          }),
         [WS_METHODS.terminalClose]: (input) =>
           observeRpcEffect(WS_METHODS.terminalClose, terminalManager.close(input), {
             "rpc.aggregate": "terminal",

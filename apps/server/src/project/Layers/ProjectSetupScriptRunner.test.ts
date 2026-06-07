@@ -158,13 +158,6 @@ describe("ProjectSetupScriptRunner", () => {
       projectId: ProjectId.make("project-1"),
       cwd: "/repo/worktrees/a",
       worktreePath: "/repo/worktrees/a",
-      env: {
-        T3CODE_HOME: TEST_BASE_DIR,
-        T3CODE_PROJECT_ROOT: "/repo/project",
-        T3CODE_PROJECT_ID: "project-1",
-        T3CODE_THREAD_ID: "thread-1",
-        T3CODE_WORKTREE_PATH: "/repo/worktrees/a",
-      },
     });
     expect(write).toHaveBeenCalledWith({
       threadId: "thread-1",
