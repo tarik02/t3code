@@ -9,7 +9,7 @@ on:
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -41,7 +41,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -63,7 +63,7 @@ jobs:
   test_browser:
     name: Test Browser
     if: false
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -130,7 +130,7 @@ jobs:
 
   release_smoke:
     name: Release Smoke
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     steps:
       - name: Checkout

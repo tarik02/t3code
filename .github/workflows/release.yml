@@ -28,7 +28,7 @@ jobs:
   check_changes:
     name: Check for changes since last nightly
     if: github.event_name == 'schedule'
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
     steps:
@@ -64,7 +64,7 @@ jobs:
     if: |
       !failure() && !cancelled() &&
       (github.event_name != 'schedule' || needs.check_changes.outputs.has_changes == 'true')
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     outputs:
       release_channel: ${{ steps.release_meta.outputs.release_channel }}
@@ -168,7 +168,7 @@ jobs:
     name: Resolve T3 Cloud public config
     needs: preflight
     if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' }}
-    runs-on: blacksmith-8vcpu-ubuntu-2404
+    runs-on: t3code-arc
     timeout-minutes: 5
     environment:
       name: production
@@ -242,7 +242,7 @@ jobs:
             target: dmg
             arch: x64
           - label: Linux x64
-            runner: ubuntu-24.04
+            runner: t3code-arc
             platform: linux
             target: AppImage
             arch: x64
@@ -480,7 +480,7 @@ jobs:
     name: Publish CLI to npm
     needs: [preflight, relay_public_config, build]
     if: ${{ false }} # Disabled for the fork: keep the private CLI package out of npm publishing.
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     permissions:
       contents: read
@@ -523,7 +523,7 @@ jobs:
     name: Publish GitHub Release
     needs: [preflight, build]
     if: ${{ !failure() && !cancelled() && needs.preflight.result == 'success' && needs.build.result == 'success' }}
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     steps:
       - id: app_token
@@ -640,7 +640,7 @@ jobs:
     name: Deploy hosted web app
     needs: [preflight, relay_public_config, release]
     if: ${{ false }} # Disabled for the fork: avoid deploying the hosted web app with upstream Vercel secrets.
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     env:
       T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.relay_public_config.outputs.clerk_publishable_key }}
@@ -735,7 +735,7 @@ jobs:
     name: Finalize release
     if: ${{ false }} # Disabled for the fork: avoid committing release-only version bumps back to main.
     needs: [preflight, release]
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     steps:
       - id: app_token
@@ -810,7 +810,7 @@ jobs:
     name: Announce release on Discord
     if: ${{ false }} # Disabled for the fork: avoid posting upstream release announcements.
     needs: [preflight, relay_public_config, release, deploy_web, finalize]
-    runs-on: ubuntu-24.04
+    runs-on: t3code-arc
     timeout-minutes: 10
     steps:
       - name: Checkout
