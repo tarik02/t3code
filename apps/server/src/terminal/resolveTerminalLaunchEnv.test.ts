@@ -101,11 +101,38 @@ describe("resolveTerminalLaunchEnv", () => {
         T3CODE_WORKTREE_PATH: "/repo/worktrees/a",
       });
       assert.strictEqual(result.worktreePath, "/repo/worktrees/a");
-      assert.isFalse("projectId" in result);
     }),
   );
 
-  it.effect("fails when the thread is not found", () =>
+  it.effect("ignores client projectId when the thread already exists", () =>
+    Effect.gen(function* () {
+      const spoofedProjectId = ProjectId.make("project-spoofed");
+      const result = yield* resolveTerminalOpenInput({
+        threadId: THREAD_ID,
+        terminalId: DEFAULT_TERMINAL_ID,
+        projectId: spoofedProjectId,
+        cwd: "/repo/worktrees/a",
+      }).pipe(Effect.provide(makeTestLayer(Option.some(makeThread()))));
+
+      assert.strictEqual(result.env.T3CODE_PROJECT_ID, "project-1");
+    }),
+  );
+
+  it.effect("resolves launch env for draft threads using client projectId", () =>
+    Effect.gen(function* () {
+      const result = yield* resolveTerminalOpenInput({
+        threadId: THREAD_ID,
+        terminalId: DEFAULT_TERMINAL_ID,
+        projectId: PROJECT_ID,
+        cwd: "/repo/project",
+      }).pipe(Effect.provide(makeTestLayer(Option.none())));
+
+      assert.strictEqual(result.env.T3CODE_PROJECT_ID, "project-1");
+      assert.strictEqual(result.env.T3CODE_THREAD_ID, "thread-1");
+    }),
+  );
+
+  it.effect("fails when the thread is not found and projectId is omitted", () =>
     Effect.gen(function* () {
       const error = yield* Effect.flip(
         resolveTerminalOpenInput({

@@ -1,6 +1,7 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Plus, SquareSplitHorizontal, TerminalSquare, Trash2, XIcon } from "lucide-react";
 import {
+  type ProjectId,
   type ResolvedKeybindingsConfig,
   type ScopedThreadRef,
   type TerminalAttachStreamEvent,
@@ -254,6 +255,7 @@ export function shouldHandleTerminalSelectionMouseUp(
 interface TerminalViewportProps {
   threadRef: ScopedThreadRef;
   threadId: ThreadId;
+  projectId: ProjectId;
   terminalId: string;
   terminalLabel: string;
   cwd: string;
@@ -276,6 +278,7 @@ interface TerminalLaunchLocation {
 export function TerminalViewport({
   threadRef,
   threadId,
+  projectId,
   terminalId,
   terminalLabel,
   cwd,
@@ -663,6 +666,7 @@ export function TerminalViewport({
         terminal: {
           threadId,
           terminalId,
+          projectId,
           cwd,
           ...(worktreePath !== undefined ? { worktreePath } : {}),
           cols: activeTerminal.cols,
@@ -726,7 +730,7 @@ export function TerminalViewport({
     // autoFocus is intentionally omitted;
     // it is only read at mount time and must not trigger terminal teardown/recreation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cwd, environmentId, runtimeEnvKey, terminalId, threadId, worktreePath]);
+  }, [cwd, environmentId, projectId, runtimeEnvKey, terminalId, threadId, worktreePath]);
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -775,6 +779,7 @@ export function TerminalViewport({
 interface ThreadTerminalDrawerProps {
   threadRef: ScopedThreadRef;
   threadId: ThreadId;
+  projectId: ProjectId;
   cwd: string;
   worktreePath?: string | null;
   visible?: boolean;
@@ -832,6 +837,7 @@ function TerminalActionButton({ label, className, onClick, children }: TerminalA
 export default function ThreadTerminalDrawer({
   threadRef,
   threadId,
+  projectId,
   cwd,
   worktreePath,
   visible = true,
@@ -1221,6 +1227,7 @@ export default function ThreadTerminalDrawer({
                         <TerminalViewport
                           threadRef={threadRef}
                           threadId={threadId}
+                          projectId={projectId}
                           terminalId={terminalId}
                           terminalLabel={terminalLabelById.get(terminalId) ?? "Terminal"}
                           cwd={terminalLaunchLocation.cwd}
@@ -1246,6 +1253,7 @@ export default function ThreadTerminalDrawer({
                   key={resolvedActiveTerminalId}
                   threadRef={threadRef}
                   threadId={threadId}
+                  projectId={projectId}
                   terminalId={resolvedActiveTerminalId}
                   terminalLabel={terminalLabelById.get(resolvedActiveTerminalId) ?? "Terminal"}
                   cwd={activeTerminalLaunchLocation.cwd}
