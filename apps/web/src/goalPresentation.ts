@@ -6,6 +6,10 @@ export function goalStatusLabel(status: OrchestrationThreadGoal["status"]): stri
       return "Active";
     case "paused":
       return "Paused";
+    case "blocked":
+      return "Blocked";
+    case "usageLimited":
+      return "Usage limited";
     case "budgetLimited":
       return "Budget limited";
     case "complete":

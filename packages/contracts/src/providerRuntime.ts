@@ -335,6 +335,8 @@ export type ThreadTokenUsageUpdatedPayload = typeof ThreadTokenUsageUpdatedPaylo
 export const ProviderRuntimeThreadGoalStatus = Schema.Literals([
   "active",
   "paused",
+  "blocked",
+  "usageLimited",
   "budgetLimited",
   "complete",
 ]);

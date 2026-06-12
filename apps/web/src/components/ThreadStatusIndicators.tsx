@@ -100,6 +100,10 @@ function goalStatusColorClass(status: NonNullable<SidebarThreadSummary["goal"]>[
       return "text-emerald-600 dark:text-emerald-300/90";
     case "paused":
       return "text-amber-600 dark:text-amber-300/90";
+    case "blocked":
+      return "text-red-600 dark:text-red-300/90";
+    case "usageLimited":
+      return "text-orange-600 dark:text-orange-300/90";
     case "budgetLimited":
       return "text-orange-600 dark:text-orange-300/90";
     case "complete":

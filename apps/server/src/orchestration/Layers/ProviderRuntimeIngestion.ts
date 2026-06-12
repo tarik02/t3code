@@ -195,11 +195,18 @@ function goalUpdatedActivitySummary(
   }
   switch (goal.status) {
     case "active":
-      return previousGoal.status === "paused" || previousGoal.status === "budgetLimited"
+      return previousGoal.status === "paused" ||
+        previousGoal.status === "budgetLimited" ||
+        previousGoal.status === "blocked" ||
+        previousGoal.status === "usageLimited"
         ? "Goal resumed"
         : null;
     case "paused":
       return "Goal paused";
+    case "blocked":
+      return "Goal blocked";
+    case "usageLimited":
+      return "Goal usage limited";
     case "budgetLimited":
       return "Goal budget limited";
     case "complete":
@@ -1326,6 +1333,22 @@ const make = Effect.gen(function* () {
         activeTurnId !== null && eventTurnId !== undefined && !sameId(activeTurnId, eventTurnId);
       const missingTurnForActiveTurn = activeTurnId !== null && eventTurnId === undefined;
 
+      // A turn.started that conflicts with the active turn is legitimate when
+      // the server itself has a turn start pending for this thread AND the
+      // provider session already tracks the event's turn as its active turn:
+      // steering a running turn makes some providers (e.g. opencode) open a
+      // new turn without ever completing the superseded one. A stale
+      // turn.started for some other turn id still gets rejected.
+      const conflictingTurnStartIsPendingTurnStart =
+        event.type === "turn.started" && conflictsWithActiveTurn
+          ? sameId(yield* getExpectedProviderTurnIdForThread(thread.id), eventTurnId) &&
+            Option.isSome(
+              yield* projectionTurnRepository.getPendingTurnStartByThreadId({
+                threadId: thread.id,
+              }),
+            )
+          : false;
+
       const shouldApplyThreadLifecycle = (() => {
         if (!STRICT_PROVIDER_LIFECYCLE_GUARD) {
           return true;
@@ -1337,7 +1360,7 @@ const make = Effect.gen(function* () {
           case "thread.started":
             return true;
           case "turn.started":
-            return !conflictsWithActiveTurn;
+            return !conflictsWithActiveTurn || conflictingTurnStartIsPendingTurnStart;
           case "turn.completed":
             if (conflictsWithActiveTurn || missingTurnForActiveTurn) {
               return false;

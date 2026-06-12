@@ -314,6 +314,8 @@ export type OrchestrationThreadActivity = typeof OrchestrationThreadActivity.Typ
 export const OrchestrationThreadGoalStatus = Schema.Literals([
   "active",
   "paused",
+  "blocked",
+  "usageLimited",
   "budgetLimited",
   "complete",
 ]);
