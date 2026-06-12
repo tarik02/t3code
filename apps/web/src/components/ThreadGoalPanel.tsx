@@ -12,6 +12,10 @@ function goalStatusClassName(status: OrchestrationThreadGoal["status"]): string 
       return "border-emerald-500/20 bg-emerald-500/10 text-emerald-500";
     case "paused":
       return "border-amber-500/20 bg-amber-500/10 text-amber-500";
+    case "blocked":
+      return "border-red-500/20 bg-red-500/10 text-red-500";
+    case "usageLimited":
+      return "border-orange-500/20 bg-orange-500/10 text-orange-500";
     case "budgetLimited":
       return "border-orange-500/20 bg-orange-500/10 text-orange-500";
     case "complete":
