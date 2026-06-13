@@ -27,7 +27,7 @@ interface NightlyVersion {
   readonly minor: number;
   readonly patch: number;
   readonly date: number;
-  readonly runNumber: number;
+  readonly sequence: number;
 }
 
 const parseNumericIdentifier = (identifier: string): number | undefined =>
@@ -100,24 +100,27 @@ const compareNightlyVersions = (left: NightlyVersion, right: NightlyVersion): nu
   if (left.minor !== right.minor) return left.minor - right.minor;
   if (left.patch !== right.patch) return left.patch - right.patch;
   if (left.date !== right.date) return left.date - right.date;
-  return left.runNumber - right.runNumber;
+  return left.sequence - right.sequence;
 };
 
 const parseNightlyTag = (tag: string): NightlyVersion | undefined => {
   // Accept both the current `v<semver>` format and the legacy `nightly-v<semver>`
   // format so release note diffs keep working across the tag-format transition.
-  const match = /^(?:nightly-)?v(\d+)\.(\d+)\.(\d+)-nightly\.(\d{8})\.(\d+)$/.exec(tag);
+  const match =
+    /^(?:nightly-)?v(\d+)\.(\d+)\.(\d+)-nightly\.(\d{8})(?:\.(\d+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(
+      tag,
+    );
   if (!match) return undefined;
 
-  const [, major, minor, patch, date, runNumber] = match;
-  if (!major || !minor || !patch || !date || !runNumber) return undefined;
+  const [, major, minor, patch, date, sequence] = match;
+  if (!major || !minor || !patch || !date) return undefined;
 
   return {
     major: Number(major),
     minor: Number(minor),
     patch: Number(patch),
     date: Number(date),
-    runNumber: Number(runNumber),
+    sequence: sequence ? Number(sequence) : 1,
   };
 };
 
