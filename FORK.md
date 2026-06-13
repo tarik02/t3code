@@ -1,0 +1,38 @@
+# Fork Notes
+
+This repository is a fork of `pingdotgg/t3code`. Keep this file focused on fork behavior that intentionally differs from upstream.
+
+## Changes
+
+### Release And CI
+
+- Fork workflows disable scheduled releases, relay jobs, hosted deploys, and fork-unsafe publish paths.
+- Release builds publish updater metadata against the fork repository.
+- Fork release versions are derived in the release workflow so package manifests stay close to upstream.
+
+### Desktop Updater Channels
+
+- Stable builds use `latest`; nightly builds use `nightly`.
+- Nightly detection accepts fork release metadata while preserving the upstream channel split.
+
+### Fork Persistence
+
+- Fork-only goal persistence is stored in a sidecar database named `state-tarik02.sqlite`.
+
+### Goals UI
+
+- The fork adds thread goal support, goal activity rendering, and goal sidebar/panel UI.
+
+### Provider Launch Environment
+
+- Provider sessions use a shared launch environment pipeline instead of ad hoc environment assembly.
+
+### Base Path And Remote URLs
+
+- The fork includes base-path handling for served web assets and remote URL normalization.
+
+### UX Changes
+
+- Desktop context-menu style is configurable.
+- Threads can be archived with middle click.
+- Terminal selection has a copy action.

@@ -650,7 +650,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
 }
 
 export function resolveDesktopUpdateChannel(version: string): "latest" | "nightly" {
-  return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
+  return /-nightly\.\d{8}(?:\.\d+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version) ? "nightly" : "latest";
 }
 
 export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIconAssets {

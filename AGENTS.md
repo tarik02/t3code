@@ -24,6 +24,17 @@ If a tradeoff is required, choose correctness and robustness over short-term con
 
 Long term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
 
+## Fork Notes
+
+- `FORK.md` documents behavior that intentionally differs from upstream.
+- When making fork-only changes, update `FORK.md` in the same change so future upstream merges have current context.
+- Keep workflow-only fork changes narrow and prefer job-level disables over broad refactors.
+- Do not commit package version bumps solely to represent fork releases.
+- Re-check Electron updater channel behavior when changing version strings, release metadata, or desktop packaging.
+- Keep fork-only storage in `state-tarik02.sqlite` unless intentionally upstreaming it.
+- When preparing fork PRs, branch from `origin/main` and target `tarik02/t3code:main`.
+- If a fork PR branch accidentally includes upstream history, rebuild it from `origin/main` and replay only the intended diff.
+
 ## Package Roles
 
 - `apps/server`: Node.js WebSocket server. Wraps Codex app-server (JSON-RPC over stdio), serves the React web app, and manages provider sessions.
