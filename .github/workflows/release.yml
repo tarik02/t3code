@@ -469,14 +469,20 @@ jobs:
           }
 
           if [[ "${{ matrix.platform }}" == "mac" ]]; then
-            if has_all "$CSC_LINK" "$CSC_KEY_PASSWORD" "$APPLE_API_KEY" "$APPLE_API_KEY_ID" "$APPLE_API_ISSUER"; then
-              key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
-              printf '%s' "$APPLE_API_KEY" > "$key_path"
-              export APPLE_API_KEY="$key_path"
+            if has_all "$CSC_LINK" "$CSC_KEY_PASSWORD"; then
+              if has_all "$APPLE_API_KEY" "$APPLE_API_KEY_ID" "$APPLE_API_ISSUER"; then
+                key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+                printf '%s' "$APPLE_API_KEY" > "$key_path"
+                export APPLE_API_KEY="$key_path"
+                echo "macOS notarization enabled."
+              else
+                unset APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER
+                echo "macOS notarization disabled (missing one or more Apple notarization secrets)."
+              fi
               echo "macOS signing enabled."
               args+=(--signed)
             else
-              echo "macOS signing disabled (missing one or more Apple signing secrets)."
+              echo "macOS signing disabled (missing code-signing certificate secrets)."
             fi
           elif [[ "${{ matrix.platform }}" == "win" ]]; then
             if has_all \
