@@ -41,7 +41,6 @@ import {
   CircleCheckIcon,
   CircleDashedIcon,
   ClockIcon,
-  FolderIcon,
   FolderPlusIcon,
   GitBranchIcon,
   MessageSquareIcon,
@@ -49,7 +48,6 @@ import {
   PlusIcon,
   SearchIcon,
   ServerIcon,
-  SettingsIcon,
   SquarePenIcon,
   TerminalIcon,
   Undo2Icon,
@@ -94,6 +92,7 @@ import { isMacPlatform } from "~/lib/utils";
 import { useOpenPrLink } from "../lib/openPullRequestLink";
 import { readLocalApi } from "../localApi";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
+import { normalizeProjectTags, projectMatchesTagFilters, toggleProjectTag } from "../projectTags";
 import {
   buildSidebarProjectSnapshots,
   type SidebarProjectSnapshot,
@@ -110,6 +109,7 @@ import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useNowMinute } from "../hooks/useNowMinute";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useThreadShells } from "../state/entities";
+import { projectEnvironment } from "../state/projects";
 import { environmentServerConfigsAtom, primaryServerKeybindingsAtom } from "../state/server";
 import { vcsEnvironment } from "../state/vcs";
 import { threadEnvironment } from "../state/threads";
@@ -166,6 +166,7 @@ import {
   type SnoozePreset,
 } from "./Sidebar.snooze";
 import { ProjectFavicon } from "./ProjectFavicon";
+import { CreateProjectTagDialog, ProjectScopePicker } from "./ProjectScopePicker";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import {
@@ -177,7 +178,6 @@ import { useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import { SidebarContent, SidebarGroup, SidebarMenuButton, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
@@ -1762,6 +1762,9 @@ export default function Sidebar() {
   const updateThreadMetadata = useAtomCommand(threadEnvironment.updateMetadata, {
     reportFailure: false,
   });
+  const updateProject = useAtomCommand(projectEnvironment.update, {
+    reportFailure: false,
+  });
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onCopy: ({ path }) => {
       toastManager.add({
@@ -1817,7 +1820,7 @@ export default function Sidebar() {
       );
     },
   });
-  const [projectScopeMenuOpen, setProjectScopeMenuOpen] = useState(false);
+  const [projectScopePickerOpen, setProjectScopePickerOpen] = useState(false);
   const newThreadContext = useHandleNewThread();
   const openAddProjectCommandPalette = useCallback(
     () => openCommandPalette({ open: "add-project" }),
@@ -1896,10 +1899,39 @@ export default function Sidebar() {
       sidebarProjectSortOrder,
     ],
   );
-  const projectGroups = useMemo(
+  const persistedProjectGroups = useMemo(
     () => sortLogicalProjectsForSidebar(unsortedProjectGroups, threads, sidebarProjectSortOrder),
     [sidebarProjectSortOrder, threads, unsortedProjectGroups],
   );
+  const [optimisticTagsByProjectKey, setOptimisticTagsByProjectKey] = useState<
+    ReadonlyMap<string, ReadonlyArray<string>>
+  >(() => new Map());
+  const projectGroups = useMemo(
+    () =>
+      persistedProjectGroups.map((group) => {
+        const optimisticTags = optimisticTagsByProjectKey.get(group.projectKey);
+        return optimisticTags === undefined ? group : { ...group, tags: optimisticTags };
+      }),
+    [optimisticTagsByProjectKey, persistedProjectGroups],
+  );
+  useEffect(() => {
+    setOptimisticTagsByProjectKey((current) => {
+      let next: Map<string, ReadonlyArray<string>> | null = null;
+      for (const group of persistedProjectGroups) {
+        const optimisticTags = current.get(group.projectKey);
+        if (
+          optimisticTags === undefined ||
+          optimisticTags.length !== group.tags.length ||
+          !optimisticTags.every((tag, index) => tag === group.tags[index])
+        ) {
+          continue;
+        }
+        next ??= new Map(current);
+        next.delete(group.projectKey);
+      }
+      return next ?? current;
+    });
+  }, [persistedProjectGroups]);
   const serverConfigs = useAtomValue(environmentServerConfigsAtom);
   // Threads on non-primary environments (T3 Connect, hosted) resolve their
   // provider entry from their own environment's config: default instance ids
@@ -1954,9 +1986,10 @@ export default function Sidebar() {
 
   const changeRequestSnapshotByKey = useAtomValue(threadChangeRequestSnapshotsAtom);
 
-  // Project scope: one menu above the list. Scoping filters the list without
+  // Project scope: one picker above the list. Scoping filters the list without
   // making the header width depend on the number or length of project names.
   const [projectScopeKey, setProjectScopeKey] = useState<string | null>(null);
+  const [projectTagFilters, setProjectTagFilters] = useState<string[]>([]);
   const scopedProjectGroup = useMemo(
     () =>
       projectScopeKey === null
@@ -1964,22 +1997,52 @@ export default function Sidebar() {
         : (projectGroups.find((project) => project.projectKey === projectScopeKey) ?? null),
     [projectGroups, projectScopeKey],
   );
-  const scopedProjectKeys = useMemo(
-    () =>
+  const scopedProjectKeys = useMemo(() => {
+    const projectKeys =
       scopedProjectGroup === null
         ? null
         : new Set(
             scopedProjectGroup.memberProjectRefs.map(
               (projectRef) => `${projectRef.environmentId}:${projectRef.projectId}`,
             ),
+          );
+    if (projectTagFilters.length === 0) return projectKeys;
+    const tagMatchedProjectKeys = new Set(
+      projectGroups
+        .filter((group) => projectMatchesTagFilters(group.tags, projectTagFilters))
+        .flatMap((group) =>
+          group.memberProjectRefs.map(
+            (projectRef) => `${projectRef.environmentId}:${projectRef.projectId}`,
           ),
-    [scopedProjectGroup],
-  );
+        ),
+    );
+    if (projectKeys === null) return tagMatchedProjectKeys;
+    return new Set([...projectKeys].filter((projectKey) => tagMatchedProjectKeys.has(projectKey)));
+  }, [projectGroups, projectTagFilters, scopedProjectGroup]);
   useEffect(() => {
     if (projectScopeKey !== null && scopedProjectGroup === null) {
       setProjectScopeKey(null);
     }
   }, [projectScopeKey, scopedProjectGroup]);
+  useEffect(() => {
+    if (
+      scopedProjectGroup !== null &&
+      !projectMatchesTagFilters(scopedProjectGroup.tags, projectTagFilters)
+    ) {
+      setProjectScopeKey(null);
+    }
+  }, [projectTagFilters, scopedProjectGroup]);
+  const availableProjectTags = useMemo(
+    () => normalizeProjectTags(projectGroups.flatMap((group) => group.tags)),
+    [projectGroups],
+  );
+  useEffect(() => {
+    const availableTagKeys = new Set(availableProjectTags.map((tag) => tag.toLocaleLowerCase()));
+    setProjectTagFilters((current) => {
+      const next = current.filter((tag) => availableTagKeys.has(tag.toLocaleLowerCase()));
+      return next.length === current.length ? current : next;
+    });
+  }, [availableProjectTags]);
   // Count-only subscription: the parent needs "are there draft rows" for the
   // empty state, while SidebarDraftBlock owns the per-keystroke content
   // subscription. Selecting a number keeps typing in a draft composer from
@@ -2008,15 +2071,14 @@ export default function Sidebar() {
   });
   // Scope flips drop the selection: rows selected under the old scope may be
   // hidden now, and bulk actions must never count or touch invisible rows.
+  const projectTagFilterKey = projectTagFilters.join("\0");
   useEffect(() => {
     clearSelection();
-  }, [clearSelection, projectScopeKey]);
+  }, [clearSelection, projectScopeKey, projectTagFilterKey]);
 
   const handleProjectSettings = useCallback(
-    (event: ReactMouseEvent<HTMLButtonElement>, projectGroup: SidebarProjectSnapshot) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setProjectScopeMenuOpen(false);
+    (projectGroup: SidebarProjectSnapshot) => {
+      setProjectScopePickerOpen(false);
       if (isMobile) {
         setOpenMobile(false);
       }
@@ -2026,6 +2088,65 @@ export default function Sidebar() {
       });
     },
     [isMobile, router, setOpenMobile],
+  );
+  const [createTagProjectGroup, setCreateTagProjectGroup] = useState<SidebarProjectSnapshot | null>(
+    null,
+  );
+  const updateProjectTags = useCallback(
+    async (projectGroup: SidebarProjectSnapshot, tags: string[]): Promise<boolean> => {
+      setOptimisticTagsByProjectKey((current) => {
+        const next = new Map(current);
+        next.set(projectGroup.projectKey, tags);
+        return next;
+      });
+      for (const member of projectGroup.memberProjects) {
+        const result = await updateProject({
+          environmentId: member.environmentId,
+          input: { projectId: member.id, tags },
+        });
+        if (result._tag !== "Failure") continue;
+        setOptimisticTagsByProjectKey((current) => {
+          const next = new Map(current);
+          next.delete(projectGroup.projectKey);
+          return next;
+        });
+        if (!isAtomCommandInterrupted(result)) {
+          const error = squashAtomCommandFailure(result);
+          toastManager.add(
+            stackedThreadToast({
+              type: "error",
+              title: "Failed to update project tags",
+              description: error instanceof Error ? error.message : "An error occurred.",
+            }),
+          );
+        }
+        return false;
+      }
+      return true;
+    },
+    [updateProject],
+  );
+  const handleToggleProjectTag = useCallback(
+    (projectGroup: SidebarProjectSnapshot, tag: string) => {
+      void updateProjectTags(projectGroup, toggleProjectTag(projectGroup.tags, tag));
+    },
+    [updateProjectTags],
+  );
+  const handleCreateProjectTag = useCallback(
+    (projectGroup: SidebarProjectSnapshot, tag: string): Promise<boolean> => {
+      const existingTag = availableProjectTags.find(
+        (candidate) => candidate.toLocaleLowerCase() === tag.toLocaleLowerCase(),
+      );
+      const tags = normalizeProjectTags([...projectGroup.tags, existingTag ?? tag]);
+      if (
+        tags.length === projectGroup.tags.length &&
+        tags.every((candidate, index) => candidate === projectGroup.tags[index])
+      ) {
+        return Promise.resolve(true);
+      }
+      return updateProjectTags(projectGroup, tags);
+    },
+    [availableProjectTags, updateProjectTags],
   );
 
   // Settled threads stay in the live shell stream (settled ≠ archived), so
@@ -2187,7 +2308,7 @@ export default function Sidebar() {
   // filter context changes so a scope/search flip never inherits a deep
   // page state.
   const [settledVisibleCount, setSettledVisibleCount] = useState(SETTLED_TAIL_INITIAL_COUNT);
-  const settledResetKey = projectScopeKey ?? "all";
+  const settledResetKey = `${projectScopeKey ?? "all"}:${projectTagFilterKey}`;
   const lastSettledResetKeyRef = useRef(settledResetKey);
   if (lastSettledResetKeyRef.current !== settledResetKey) {
     lastSettledResetKeyRef.current = settledResetKey;
@@ -3518,80 +3639,18 @@ export default function Sidebar() {
             </div>
             {projectGroups.length > 0 ? (
               <div className="flex items-center gap-1">
-                <Menu open={projectScopeMenuOpen} onOpenChange={setProjectScopeMenuOpen}>
-                  <MenuTrigger
-                    render={
-                      <SidebarMenuButton
-                        aria-label="Filter threads by project"
-                        className="min-w-0 flex-1 ps-[calc(var(--sidebar-row-content-inset)-1px)] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                      />
-                    }
-                  >
-                    {scopedProjectGroup ? (
-                      <ProjectFavicon
-                        environmentId={scopedProjectGroup.environmentId}
-                        cwd={scopedProjectGroup.workspaceRoot}
-                        faviconPath={scopedProjectGroup.faviconPath}
-                        className="size-4 shrink-0"
-                      />
-                    ) : (
-                      <FolderIcon className="size-4 shrink-0" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate">
-                      {scopedProjectGroup?.displayName ?? "All projects"}
-                    </span>
-                    <ChevronDownIcon className="-mr-px size-4 shrink-0" />
-                  </MenuTrigger>
-                  <MenuPopup align="start" className="w-(--anchor-width)">
-                    <MenuRadioGroup
-                      value={projectScopeKey ?? "all"}
-                      onValueChange={(value) =>
-                        setProjectScopeKey(value === "all" ? null : (value as string))
-                      }
-                    >
-                      <MenuRadioItem
-                        value="all"
-                        closeOnClick
-                        className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                      >
-                        <FolderIcon className="size-4 shrink-0" />
-                        <span className="min-w-0 truncate text-sm">All projects</span>
-                      </MenuRadioItem>
-                      {projectGroups.map((project) => {
-                        const scopeKey = project.projectKey;
-                        return (
-                          <MenuRadioItem
-                            key={scopeKey}
-                            value={scopeKey}
-                            closeOnClick
-                            className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                          >
-                            <ProjectFavicon
-                              environmentId={project.environmentId}
-                              cwd={project.workspaceRoot}
-                              faviconPath={project.faviconPath}
-                              className="size-4 shrink-0"
-                            />
-                            <span className="min-w-0 truncate text-sm">{project.displayName}</span>
-                            <Button
-                              size="icon-xs"
-                              variant="ghost-muted"
-                              aria-label={`Project settings for ${project.displayName}`}
-                              title={`Project settings for ${project.displayName}`}
-                              className="ml-auto size-6 [--control-icon-color:currentColor] text-icon-muted focus-visible:bg-accent focus-visible:text-foreground"
-                              onPointerDown={(event) => event.stopPropagation()}
-                              onClick={(event) => {
-                                void handleProjectSettings(event, project);
-                              }}
-                            >
-                              <SettingsIcon className="size-3.5" />
-                            </Button>
-                          </MenuRadioItem>
-                        );
-                      })}
-                    </MenuRadioGroup>
-                  </MenuPopup>
-                </Menu>
+                <ProjectScopePicker
+                  groups={projectGroups}
+                  open={projectScopePickerOpen}
+                  selectedProjectKey={projectScopeKey}
+                  selectedTags={projectTagFilters}
+                  onOpenChange={setProjectScopePickerOpen}
+                  onSelectedProjectKeyChange={setProjectScopeKey}
+                  onSelectedTagsChange={setProjectTagFilters}
+                  onOpenSettings={handleProjectSettings}
+                  onToggleProjectTag={handleToggleProjectTag}
+                  onCreateProjectTag={setCreateTagProjectGroup}
+                />
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -3975,6 +4034,8 @@ export default function Sidebar() {
                 </>
               ) : scopedProjectGroup ? (
                 `No threads in ${scopedProjectGroup.displayName} yet`
+              ) : projectTagFilters.length > 0 ? (
+                "No threads match the selected tags"
               ) : (
                 "No threads yet"
               )}
@@ -3983,6 +4044,11 @@ export default function Sidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarChromeFooter />
+      <CreateProjectTagDialog
+        group={createTagProjectGroup}
+        onClose={() => setCreateTagProjectGroup(null)}
+        onCreate={handleCreateProjectTag}
+      />
     </>
   );
 }

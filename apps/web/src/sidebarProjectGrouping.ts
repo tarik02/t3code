@@ -1,15 +1,17 @@
 import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
 import { buildProjectGroups, type ProjectGroupingSettings } from "./logicalProject";
+import { normalizeProjectTags } from "./projectTags";
 import type { Project } from "./types";
 
 export type EnvironmentPresence = "local-only" | "remote-only" | "mixed";
 
-export interface SidebarProjectGroupMember extends Project {
+export interface SidebarProjectGroupMember extends Omit<Project, "tags"> {
   physicalProjectKey: string;
   environmentLabel: string | null;
+  tags: readonly string[];
 }
 
-export interface SidebarProjectSnapshot extends Project {
+export interface SidebarProjectSnapshot extends Omit<Project, "tags"> {
   projectKey: string;
   displayName: string;
   groupedProjectCount: number;
@@ -23,6 +25,7 @@ export interface SidebarProjectSnapshot extends Project {
   memberProjects: readonly SidebarProjectGroupMember[];
   memberProjectRefs: readonly ScopedProjectRef[];
   remoteEnvironmentLabels: readonly string[];
+  tags: readonly string[];
 }
 
 export interface SidebarProjectPickerEntry {
@@ -71,6 +74,7 @@ export function buildSidebarProjectSnapshots(input: {
         ...project,
         physicalProjectKey,
         environmentLabel: input.resolveEnvironmentLabel(project.environmentId),
+        tags: project.tags ?? [],
       }),
     );
     const representative =
@@ -98,6 +102,7 @@ export function buildSidebarProjectSnapshots(input: {
     const allRemoteMembersAreDesktopLocal =
       remoteMembers.length > 0 &&
       remoteMembers.every((member) => isDesktopLocal(member.environmentId));
+    const tags = normalizeProjectTags(members.flatMap((member) => member.tags));
 
     return {
       ...representative,
@@ -110,6 +115,7 @@ export function buildSidebarProjectSnapshots(input: {
       memberProjects: members,
       memberProjectRefs: group.memberProjectRefs,
       remoteEnvironmentLabels,
+      tags,
     };
   });
 }

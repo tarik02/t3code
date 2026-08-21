@@ -12,6 +12,7 @@ import {
   ProjectId,
   ProjectScript,
   ThreadEnvMode,
+  TrimmedNonEmptyString,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -27,6 +28,7 @@ export const ProjectionProject = Schema.Struct({
   defaultModelSelection: Schema.NullOr(ModelSelection),
   defaultThreadEnvMode: Schema.NullOr(ThreadEnvMode),
   faviconPath: Schema.optional(Schema.NullOr(Schema.String)),
+  tags: Schema.Array(TrimmedNonEmptyString),
   scripts: Schema.Array(ProjectScript),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -51,7 +53,7 @@ export interface ProjectionProjectRepositoryShape {
   /**
    * Insert or replace a projected project row.
    *
-   * Upserts by `projectId` and persists scripts through JSON encoding.
+   * Upserts by `projectId` and persists tags and scripts through JSON encoding.
    */
   readonly upsert: (row: ProjectionProject) => Effect.Effect<void, ProjectionRepositoryError>;
 
