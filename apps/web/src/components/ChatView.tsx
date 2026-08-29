@@ -5928,6 +5928,7 @@ function ChatViewContent(props: ChatViewProps) {
     const goalSlashCommand =
       ctxSelectedProvider === "codex" &&
       composerImages.length === 0 &&
+      composerFiles.length === 0 &&
       sendableComposerTerminalContexts.length === 0 &&
       composerElementContexts.length === 0 &&
       composerPreviewAnnotations.length === 0
