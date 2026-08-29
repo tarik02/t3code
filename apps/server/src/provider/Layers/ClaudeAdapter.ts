@@ -3123,10 +3123,11 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     // ({kind: commit|push|rebase}) and `code_change_published`
     // ({provider, url, repo}) are informational CLI notices; the work log
     // already shows the underlying git/gh tool calls.
-    if (message.subtype === "background_tasks_changed") {
+    const subtype = String(message.subtype);
+    if (subtype === "background_tasks_changed") {
       return;
     }
-    switch (message.subtype as string) {
+    switch (subtype) {
       case "vcs_state_changed":
       case "code_change_published":
         return;
@@ -3435,16 +3436,6 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           yield* emitRuntimeWarning(context, message.text, message);
         }
         return;
-      case "control_request_progress":
-      case "informational":
-      case "model_refusal_no_fallback":
-      case "worker_shutting_down":
-        yield* emitRuntimeWarning(
-          context,
-          describeUnknownSdkMessage(`Claude system message '${message.subtype}'`, message),
-          message,
-        );
-        return;
       // Inner protocol/UX details with no T3 surface today — consumed
       // deliberately so they don't masquerade as unknown-subtype warnings.
       case "model_refusal_fallback":
@@ -3605,13 +3596,6 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         return;
       // Composer prompt suggestions have no T3 surface; consumed deliberately.
       case "prompt_suggestion":
-        return;
-      case "conversation_reset":
-        yield* emitRuntimeWarning(
-          context,
-          describeUnknownSdkMessage("Claude SDK message 'conversation_reset'", message),
-          message,
-        );
         return;
       default: {
         // Exhaustiveness guard (see handleSystemMessage): new SDK top-level

@@ -3712,7 +3712,6 @@ describe("ClaudeAdapterLive", () => {
         { command: "pwd" },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-use-1",
           suggestions: [
             {
               type: "setMode",
@@ -3824,7 +3823,6 @@ describe("ClaudeAdapterLive", () => {
         { title: "hello" },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-mcp-1",
           suggestions: [],
           toolUseID: "tool-use-mcp-1",
         },
@@ -3851,7 +3849,6 @@ describe("ClaudeAdapterLive", () => {
         { command: "git status" },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-bash-1",
           suggestions: [
             {
               type: "addRules",
@@ -3910,7 +3907,6 @@ describe("ClaudeAdapterLive", () => {
         {},
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-agent-1",
           toolUseID: "tool-agent-1",
         },
       );
@@ -3935,7 +3931,6 @@ describe("ClaudeAdapterLive", () => {
         { pattern: "foo", path: "src" },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-grep-approval-1",
           toolUseID: "tool-grep-approval-1",
         },
       );
@@ -4473,7 +4468,6 @@ describe("ClaudeAdapterLive", () => {
         },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-exit-1",
           toolUseID: "tool-exit-1",
         },
       );
@@ -4696,7 +4690,6 @@ describe("ClaudeAdapterLive", () => {
 
       const permissionPromise = canUseTool("AskUserQuestion", askInput, {
         signal: new AbortController().signal,
-        requestId: "request-tool-ask-1",
         toolUseID: "tool-ask-1",
       });
 
@@ -4823,7 +4816,6 @@ describe("ClaudeAdapterLive", () => {
 
       const permissionPromise = canUseTool("AskUserQuestion", askInput, {
         signal: new AbortController().signal,
-        requestId: "request-tool-ask-2",
         toolUseID: "tool-ask-2",
       });
 
@@ -4889,7 +4881,6 @@ describe("ClaudeAdapterLive", () => {
         },
         {
           signal: controller.signal,
-          requestId: "request-tool-ask-abort",
           toolUseID: "tool-ask-abort",
         },
       );
@@ -4966,7 +4957,6 @@ describe("ClaudeAdapterLive", () => {
         {
           signal: controller.signal,
           toolUseID: "tool-ask-pre-aborted",
-          requestId: "request-tool-ask-pre-aborted",
         },
       );
 
@@ -5024,7 +5014,6 @@ describe("ClaudeAdapterLive", () => {
         },
         {
           signal: new AbortController().signal,
-          requestId: "request-tool-ask-stop",
           toolUseID: "tool-ask-stop",
         },
       );
