@@ -145,9 +145,36 @@ const ManualSchemas: Record<string, Schema.Json> = {
   },
 };
 
-// Codex 0.150 added these multi-agent values before our next full protocol
-// refresh. Keep every generated response namespace compatible with them.
-const Codex0150DefinitionSchemas: Record<string, Schema.Json> = {
+const ToolRequestUserInputParamsCompatibilitySchema: Schema.Json = {
+  type: "object",
+  title: "ToolRequestUserInputParams",
+  description: "EXPERIMENTAL. Params sent with a request_user_input event.",
+  properties: {
+    autoResolutionMs: {
+      default: null,
+      description: "@deprecated Use `isBlocking` to decide whether the request should block.",
+      format: "uint64",
+      minimum: 0,
+      type: ["integer", "null"],
+    },
+    isBlocking: { type: "boolean" },
+    itemId: { type: "string" },
+    questions: {
+      items: { $ref: "#/definitions/ToolRequestUserInputQuestion" },
+      type: "array",
+    },
+    threadId: { type: "string" },
+    turnId: { type: "string" },
+  },
+  // Codex versions before 0.149 omit isBlocking. Treat those requests as
+  // blocking while accepting the explicit field from newer app servers.
+  required: ["itemId", "questions", "threadId", "turnId"],
+};
+
+// Keep protocol additions that landed after the pinned ref available without
+// pulling an unrelated full-schema refresh into every compatibility update.
+const ProtocolCompatibilityDefinitionSchemas: Record<string, Schema.Json> = {
+  ToolRequestUserInputParams: ToolRequestUserInputParamsCompatibilitySchema,
   CollabAgentTool: {
     type: "string",
     enum: [
@@ -192,6 +219,10 @@ const Codex0150DefinitionSchemas: Record<string, Schema.Json> = {
     type: "string",
     enum: ["started", "interacted", "interrupted", "completed"],
   },
+};
+
+const ProtocolCompatibilityTopLevelSchemas: Record<string, Schema.Json> = {
+  ToolRequestUserInputParams: ToolRequestUserInputParamsCompatibilitySchema,
 };
 
 const getGeneratedPaths = Effect.fn("getGeneratedPaths")(function* () {
@@ -606,7 +637,7 @@ const generateFiles = Effect.fn("generateFiles")(function* () {
 
     for (const [definitionName, definitionSchema] of Object.entries(parsed.definitions ?? {})) {
       const compatibleDefinitionSchema =
-        Codex0150DefinitionSchemas[definitionName] ?? definitionSchema;
+        ProtocolCompatibilityDefinitionSchemas[definitionName] ?? definitionSchema;
       aggregateSchemas[localDefinitionNames.get(definitionName)!] = stripNullDefaults(
         normalizeNullableTypes(
           rewriteExternalRefs(
@@ -626,10 +657,12 @@ const generateFiles = Effect.fn("generateFiles")(function* () {
       }
     }
 
+    const compatibleTopLevelSchema =
+      ProtocolCompatibilityTopLevelSchemas[file.exportName] ?? topLevelSchema;
     aggregateSchemas[file.exportName] = stripNullDefaults(
       normalizeNullableTypes(
         rewriteExternalRefs(
-          topLevelSchema,
+          compatibleTopLevelSchema,
           localDefinitionNames,
           file.namespace,
           exportNameByQualifiedName,

@@ -21047,6 +21047,7 @@ export const ServerRequest__CommandExecutionRequestApprovalParams = Schema.Struc
 
 export type ServerRequest__ToolRequestUserInputParams = {
   readonly autoResolutionMs?: number | null;
+  readonly isBlocking?: boolean;
   readonly itemId: string;
   readonly questions: ReadonlyArray<ServerRequest__ToolRequestUserInputQuestion>;
   readonly threadId: string;
@@ -21055,12 +21056,16 @@ export type ServerRequest__ToolRequestUserInputParams = {
 export const ServerRequest__ToolRequestUserInputParams = Schema.Struct({
   autoResolutionMs: Schema.optionalKey(
     Schema.Union([
-      Schema.Number.annotate({ format: "uint64" })
+      Schema.Number.annotate({
+        description: "@deprecated Use `isBlocking` to decide whether the request should block.",
+        format: "uint64",
+      })
         .check(Schema.isInt())
         .check(Schema.isGreaterThanOrEqualTo(0)),
       Schema.Null,
     ]),
   ),
+  isBlocking: Schema.optionalKey(Schema.Boolean),
   itemId: Schema.String,
   questions: Schema.Array(ServerRequest__ToolRequestUserInputQuestion),
   threadId: Schema.String,
@@ -36637,6 +36642,7 @@ export const ServerRequest__CommandExecutionApprovalDecision = Schema.Union(
 
 export type ToolRequestUserInputParams = {
   readonly autoResolutionMs?: number | null;
+  readonly isBlocking?: boolean;
   readonly itemId: string;
   readonly questions: ReadonlyArray<ToolRequestUserInputParams__ToolRequestUserInputQuestion>;
   readonly threadId: string;
@@ -36645,12 +36651,16 @@ export type ToolRequestUserInputParams = {
 export const ToolRequestUserInputParams = Schema.Struct({
   autoResolutionMs: Schema.optionalKey(
     Schema.Union([
-      Schema.Number.annotate({ format: "uint64" })
+      Schema.Number.annotate({
+        description: "@deprecated Use `isBlocking` to decide whether the request should block.",
+        format: "uint64",
+      })
         .check(Schema.isInt())
         .check(Schema.isGreaterThanOrEqualTo(0)),
       Schema.Null,
     ]),
   ),
+  isBlocking: Schema.optionalKey(Schema.Boolean),
   itemId: Schema.String,
   questions: Schema.Array(ToolRequestUserInputParams__ToolRequestUserInputQuestion),
   threadId: Schema.String,
